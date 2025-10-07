@@ -1,14 +1,15 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// Define types
 interface ColorScheme {
   background: string;
+  surface: string;
   text: string;
   textSecondary: string;
-  surface: string;
   primary: string;
-  secoundary: string;
+  secondary: string;
   error: string;
+  border: string;
   buttonAbout: string;
   buttonBooks: string;
 }
@@ -19,39 +20,57 @@ interface ThemeContextType {
   color: ColorScheme;
 }
 
-interface ThemeProviderProps {
-  children: ReactNode;
-}
-
-// Create context with default undefined
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const useTheme = (): ThemeContextType => {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error("useTheme must be used within a ThemeProvider");
-  }
-  return context;
+  const ctx = useContext(ThemeContext);
+  if (!ctx) throw new Error("useTheme must be used within a ThemeProvider");
+  return ctx;
 };
 
-export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
+export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  const toggleTheme = () => {
-    setIsDarkMode((prevMode) => !prevMode);
+  // โหลดธีมล่าสุดจาก AsyncStorage (จำโหมดไว้)
+  useEffect(() => {
+    (async () => {
+      const saved = await AsyncStorage.getItem("themeMode");
+      if (saved === "dark") setIsDarkMode(true);
+    })();
+  }, []);
+
+  const toggleTheme = async () => {
+    const next = !isDarkMode;
+    setIsDarkMode(next);
+    await AsyncStorage.setItem("themeMode", next ? "dark" : "light");
   };
 
-  const color: ColorScheme = {
-    background: isDarkMode ? "#000" : "#fff",
-    text: isDarkMode ? "#fff" : "#000",
-    textSecondary: isDarkMode ? "#ccc" : "#333",
-    surface: isDarkMode ? "#121212" : "#f5f5f5",
-    primary: isDarkMode ? "#bb86fc" : "#6200ee",
-    secoundary: isDarkMode ? "#03dac6" : "#03dac5",
-    error: isDarkMode ? "#cf6679" : "#b00020",
-    buttonAbout: isDarkMode ? "#bb86fc" : "#6200ee",
-    buttonBooks: isDarkMode ? "#03dac5" : "#28a745",
-  };
+  // 🎨 โทนสีใหม่แบบ Instagram
+  const color: ColorScheme = isDarkMode
+    ? {
+        background: "#000000",
+        surface: "#121212",
+        text: "#ffffff",
+        textSecondary: "#a8a8a8",
+        primary: "#ff4081", // accent แบบ IG
+        secondary: "#03dac6",
+        error: "#cf6679",
+        border: "#222",
+        buttonAbout: "#ff4081",
+        buttonBooks: "#03dac6",
+      }
+    : {
+        background: "#fafafa",
+        surface: "#ffffff",
+        text: "#000000",
+        textSecondary: "#666666",
+        primary: "#405de6", // IG blue
+        secondary: "#5851db",
+        error: "#d32f2f",
+        border: "#e0e0e0",
+        buttonAbout: "#405de6",
+        buttonBooks: "#28a745",
+      };
 
   return (
     <ThemeContext.Provider value={{ isDarkMode, toggleTheme, color }}>

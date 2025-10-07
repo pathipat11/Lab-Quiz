@@ -30,6 +30,7 @@ const StackLayout: React.FC = () => {
       <Stack.Screen name="class/[year]" options={{ title: "Class" }} />
       <Stack.Screen name="feed/index" options={{ title: "Feed" }} />
       <Stack.Screen name="feed/[id]" options={{ title: "Post" }} />
+      <Stack.Screen name="setting" options={{ title: "Setting" }} />
 
     </Stack>
   );
