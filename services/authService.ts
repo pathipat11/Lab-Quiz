@@ -1,45 +1,34 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import Constants from "expo-constants";
+import { apiPost, apiGet } from "./api";
 
-const API_URL = Constants.expoConfig?.extra?.apiUrl || process.env.REACT_APP_NATIVE_API_URL;
+// รองรับทั้งแบบ { token } และ { data: { token, ... } }
+export const login = async (email: string, password: string) => {
+  const res: any = await apiPost("/signin", { email, password });
 
-interface LoginResponse {
-  token: string;
-  user: {
-    _id: string;
-    username: string;
-    email: string;
-  };
-}
+  // ถ้าเซิร์ฟเวอร์หุ้มด้วย data ให้ดึงออกมา
+  const payload = res?.data ?? res;
+  const token = payload?.token;
+  if (!token) {
+    console.log("Unexpected signin payload:", res);
+    throw new Error("No token returned from /signin");
+  }
 
-export const login = async (email: string, password: string): Promise<LoginResponse> => {
-  const res = await fetch(`${API_URL}/api/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
+  await AsyncStorage.setItem("authToken", token);
 
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Login failed");
+  // ถ้ามีข้อมูลผู้ใช้มากับ /signin ก็เก็บเลย (ตามที่เห็นใน log)
+  // payload = { _id, email, firstname, lastname, ..., token }
+  await AsyncStorage.setItem("user", JSON.stringify(payload));
 
-  // Save token
-  await AsyncStorage.setItem("authToken", data.token);
-  return data;
+  return { token, user: payload };
 };
 
 export const logout = async () => {
   await AsyncStorage.removeItem("authToken");
+  await AsyncStorage.removeItem("user");
 };
 
+// โปรไฟล์บางระบบก็หุ้มด้วย data เช่นกัน
 export const getProfile = async () => {
-  const token = await AsyncStorage.getItem("authToken");
-  if (!token) throw new Error("No token found");
-
-  const res = await fetch(`${API_URL}/api/auth/profile`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Failed to fetch profile");
-  return data.user;
+  const res: any = await apiGet("/profile");
+  return res?.data ?? res;
 };

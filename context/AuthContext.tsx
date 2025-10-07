@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
+import { getProfile as apiGetProfile } from "../services/authService";
 
 interface User {
   _id: string;
@@ -36,11 +37,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const fetchProfile = async (token: string) => {
     try {
-      const res = await fetch(`${API_URL}/api/auth/profile`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setUser(data.user);
+      const data = await apiGetProfile(); // ใช้ header Bearer จาก services/api ให้แล้ว
+      setUser(data);
     } catch (err) {
       console.error("Error fetching profile:", err);
       setUser(null);

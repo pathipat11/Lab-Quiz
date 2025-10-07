@@ -1,8 +1,8 @@
 {
   "expo": {
-    "scheme": "local-authentication",
-    "name": "local-authentication",
-    "slug": "local-authentication",
+    "scheme": "lab-quiz",
+    "name": "lab-quiz",
+    "slug": "lab-quiz",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

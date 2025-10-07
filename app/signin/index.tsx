@@ -12,7 +12,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Link, useRouter } from "expo-router";
 import { useTheme } from "../../context/ThemeContext";
 import Constants from "expo-constants";
-import { useBiometricAuth } from "../../hooks/useBiometricAuth"; // 👈 import hook
+import { useBiometricAuth } from "../../hooks/useBiometricAuth";
+import { login as apiLogin, getProfile } from "../../services/authService";
 
 const Signin = () => {
   const { color } = useTheme();
@@ -29,44 +30,30 @@ const Signin = () => {
       Alert.alert("Validation Error", "Please fill in both fields.");
       return;
     }
-
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
+      // เรียก /signin
+      const { token } = await apiLogin(email, password);
+      await AsyncStorage.setItem("authToken", token);
 
-      const result = await response.json();
-      setLoading(false);
+      // ดึงโปรไฟล์จาก /profile แล้วเก็บลง storage (ถ้าคุณต้องใช้ต่อ)
+      const profile = await getProfile();
+      await AsyncStorage.setItem("user", JSON.stringify(profile));
 
-      if (response.ok) {
-        await AsyncStorage.setItem("authToken", result.token);
-        await AsyncStorage.setItem("user", JSON.stringify(result.user));
-
-        // 👇 ตรวจสอบ biometric ก่อนเข้า main
-        if (isBiometricSupported && isEnrolled) {
-          const success = await authenticate();
-          if (!success) {
-            Alert.alert("Authentication Failed", "Biometric authentication failed.");
-            return; // ❌ ไม่ให้เข้า main ถ้า biometric fail
-          }
+      // biometric เดิม
+      if (isBiometricSupported && isEnrolled) {
+        const success = await authenticate();
+        if (!success) {
+          Alert.alert("Authentication Failed", "Biometric authentication failed.");
+          return;
         }
-
-        console.log("Login successful");
-        Alert.alert("Success", "Login successful!");
-        router.replace("/main");
-      } else {
-        console.log("Login failed:", result.message);
-        Alert.alert("Login Error", result.message || "Invalid credentials.");
       }
-    } catch (error) {
+      Alert.alert("Success", "Login successful!");
+      router.replace("/main");
+    } catch (e: any) {
+      Alert.alert("Login Error", e?.message || "Invalid credentials.");
+    } finally {
       setLoading(false);
-      console.error("Network Error:", error);
-      Alert.alert("Network Error", "Unable to connect to the server.");
     }
   };
 

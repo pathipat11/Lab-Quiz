@@ -2,8 +2,8 @@ import 'dotenv/config';
 
 export default {
     expo: {
-        name: "Local-authentication-Section7",
-        slug: "Local-authentication-Section7",
+        name: "Lab-Quiz",
+        slug: "Lab-Quiz",
         version: "1.0.0",
         orientation: "portrait",
         icon: "./assets/icon.png",
@@ -16,14 +16,14 @@ export default {
         },
         ios: {
             supportsTablet: true,
-            bundleIdentifier: "com.localauthentication.section7",
+            bundleIdentifier: "com.labquiz",
         },
         android: {
             adaptiveIcon: {
                 foregroundImage: "./assets/adaptive-icon.png",
                 backgroundColor: "#ffffff"
             },
-            package: "com.localauthentication.section7",
+            package: "com.labquiz",
             edgeToEdgeEnabled: true
         },
         web: {
@@ -32,7 +32,10 @@ export default {
         scheme: "local-authentication",
         plugins: ["expo-router"],
         extra: {
-            apiUrl: process.env.REACT_APP_NATIVE_API_URL,
+            // apiUrl: process.env.REACT_APP_NATIVE_API_URL,
+            apiUrl: "https://cis.kku.ac.th/api/classroom",
+
+            apiKey: "b2dd3c67b3302c0a71f374bf9954ec0130d333923647da9ccb770ca545cc9202"
         },
     },
 };
