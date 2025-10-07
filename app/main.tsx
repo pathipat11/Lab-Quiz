@@ -202,7 +202,6 @@ const Home: React.FC = () => {
             {/* Quick links */}
             <AnimatedCard color={color}>
                 <Text style={[styles.cardTitle, { color: color.primary }]}>ลัดไปหน้าอื่น</Text>
-
                 <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
                     <Link href="/feed" asChild>
                     <TouchableOpacity activeOpacity={0.9}>
@@ -213,7 +212,6 @@ const Home: React.FC = () => {
                         </View>
                     </TouchableOpacity>
                     </Link>
-
                     <Link href="/class/2565" asChild>
                     <TouchableOpacity activeOpacity={0.9}>
                         <View style={styles.smallShadowWrap}>
@@ -223,7 +221,6 @@ const Home: React.FC = () => {
                         </View>
                     </TouchableOpacity>
                     </Link>
-
                     <Link href="/profile" asChild>
                     <TouchableOpacity activeOpacity={0.9}>
                         <View style={styles.smallShadowWrap}>
@@ -235,7 +232,6 @@ const Home: React.FC = () => {
                     </Link>
                 </View>
             </AnimatedCard>
-
             </View>
         </ScrollView>
 
@@ -293,7 +289,7 @@ const styles = StyleSheet.create({
     label: { fontWeight: "600" },
     value: { fontWeight: "600" },
 
-    linkBtn: { marginTop: 10, alignSelf: "flex-start", paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12 },
+    linkBtn: { marginTop: 10, alignSelf: "flex-end", paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12 },
     linkBtnText: { color: "#fff", fontWeight: "700" },
 
     grid: { flexDirection: "row", flexWrap: "wrap", rowGap: 12 },
