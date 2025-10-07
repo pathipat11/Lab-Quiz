@@ -1,5 +1,6 @@
 import 'dotenv/config';
-
+// console.log('CONFIG apiUrl:', process.env.REACT_APP_NATIVE_API_URL);
+// console.log('CONFIG apiKey:', process.env.REACT_APP_NATIVE_API_KEY);
 export default {
     expo: {
         name: "Lab-Quiz",
@@ -35,7 +36,8 @@ export default {
             // apiUrl: process.env.REACT_APP_NATIVE_API_URL,
             apiUrl: "https://cis.kku.ac.th/api/classroom",
 
-            apiKey: "b2dd3c67b3302c0a71f374bf9954ec0130d333923647da9ccb770ca545cc9202"
+            apiKey: process.env.REACT_APP_NATIVE_API_KEY 
+
         },
     },
 };

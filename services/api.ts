@@ -17,7 +17,17 @@ const handleResponse = async (res: Response) => {
   const text = await res.text();
   let data: any = null;
   try { data = text ? JSON.parse(text) : null; } catch {}
-  if (!res.ok) throw new Error((data?.message || data?.error) ?? `HTTP ${res.status}`);
+
+  if (!res.ok) {
+    const allow = res.headers.get('allow'); // <- ดูว่า route นี้รับ method ไหนบ้าง
+    console.log('HTTP ERROR', res.status, res.statusText, {
+      url: res.url, allow, raw: text?.slice(0, 500)
+    });
+    throw new Error(
+      (data?.message || data?.error) ??
+      (allow ? `HTTP ${res.status} (Allow: ${allow})` : `HTTP ${res.status}`)
+    );
+  }
   return data;
 };
 

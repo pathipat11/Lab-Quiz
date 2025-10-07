@@ -1,14 +1,22 @@
 import React, { useEffect, useState } from "react";
 import {
-  View,
-  TouchableOpacity,
-  Text,
-  StyleSheet,
-  Modal,
-  Pressable,
+  View, TouchableOpacity, Text, StyleSheet, Modal, Pressable,
 } from "react-native";
 import { useRouter, usePathname } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getProfile } from "../../services/authService"; // << ใช้ service ที่แนบ x-api-key ให้อัตโนมัติ
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback } from "react";
+
+const getInitialFromUser = (u: any) => {
+  const name =
+    u?.username ||
+    [u?.firstname, u?.lastname].filter(Boolean).join(" ").trim() ||
+    u?.email ||
+    "";
+  const first = name.trim().charAt(0);
+  return first ? first.toUpperCase() : null;
+};
 
 const AuthToggle: React.FC = () => {
   const router = useRouter();
@@ -18,37 +26,42 @@ const AuthToggle: React.FC = () => {
   const [usernameInitial, setUsernameInitial] = useState<string | null>(null);
   const [showMenu, setShowMenu] = useState(false);
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      const userData = await AsyncStorage.getItem("user");
-      if (userData) {
-        try {
-          const parsed: { username?: string } = JSON.parse(userData);
-          if (parsed?.username) {
-            setUsernameInitial(parsed.username.charAt(0).toUpperCase());
-          }
-        } catch (e) {
-          console.error("Failed to parse user from storage");
-        }
+  async function loadUserInitial() {
+    try {
+      // 1) ลองอ่านจาก storage ก่อน
+      const userStr = await AsyncStorage.getItem("user");
+      if (userStr) {
+        const parsed = JSON.parse(userStr);
+        const init = getInitialFromUser(parsed);
+        if (init) { setUsernameInitial(init); return; }
       }
-    };
+      // 2) ถ้าไม่มี/ไม่ครบ ให้ยิง GET /profile แล้วเก็บลง storage
+      const profile = await getProfile();
+      await AsyncStorage.setItem("user", JSON.stringify(profile));
+      const init = getInitialFromUser(profile);
+      setUsernameInitial(init);
+    } catch (e) {
+      // ถ้า 401 หรือเครือข่ายล้มเหลวก็ปล่อยไว้ให้เป็นปุ่ม Sign In
+      setUsernameInitial(null);
+    }
+  }
 
-    fetchUser();
-  }, []);
+  useEffect(() => { loadUserInitial(); }, []);
+
+  // รีโหลดเมื่อกลับมาหน้านี้ (เวลาเพิ่งล็อกอินเสร็จ)
+  useFocusEffect(useCallback(() => { loadUserInitial(); }, []));
 
   const handleLogout = async () => {
     await AsyncStorage.removeItem("authToken");
     await AsyncStorage.removeItem("user");
     setShowMenu(false);
+    setUsernameInitial(null);
     router.replace("/signin");
   };
 
   const handlePress = () => {
-    if (usernameInitial) {
-      setShowMenu(true);
-    } else {
-      router.push(isSignin ? "/signup" : "/signin");
-    }
+    if (usernameInitial) setShowMenu(true);
+    else router.push(isSignin ? "/signup" : "/signin");
   };
 
   return (
@@ -65,13 +78,7 @@ const AuthToggle: React.FC = () => {
         )}
       </TouchableOpacity>
 
-      {/* Modal menu */}
-      <Modal
-        transparent
-        animationType="fade"
-        visible={showMenu}
-        onRequestClose={() => setShowMenu(false)}
-      >
+      <Modal transparent animationType="fade" visible={showMenu} onRequestClose={() => setShowMenu(false)}>
         <Pressable style={styles.modalOverlay} onPress={() => setShowMenu(false)}>
           <View style={styles.menu}>
             <Pressable
@@ -95,58 +102,19 @@ const AuthToggle: React.FC = () => {
 export default AuthToggle;
 
 const styles = StyleSheet.create({
-  button: {
-    marginLeft: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: "#4a90e2",
-  },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 12,
-  },
+  button: { marginLeft: 16, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: "#4a90e2" },
+  buttonText: { color: "#fff", fontWeight: "600", fontSize: 12 },
   avatar: {
-    marginLeft: 16,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#4a90e2",
-    justifyContent: "center",
-    alignItems: "center",
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
+    marginLeft: 16, width: 36, height: 36, borderRadius: 18, backgroundColor: "#4a90e2",
+    justifyContent: "center", alignItems: "center", elevation: 3, shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2,
   },
-  avatarText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 16,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.2)",
-  },
+  avatarText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.2)" },
   menu: {
-    position: "absolute",
-    top: 50,
-    left: 20,
-    backgroundColor: "#fff",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
+    position: "absolute", top: 50, left: 20, backgroundColor: "#fff",
+    paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, elevation: 4,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2,
   },
-  menuItem: {
-    paddingVertical: 8,
-    fontSize: 14,
-    fontWeight: "500",
-  },
+  menuItem: { paddingVertical: 8, fontSize: 14, fontWeight: "500" },
 });
