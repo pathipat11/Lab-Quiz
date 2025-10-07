@@ -24,14 +24,6 @@ export async function createPost(content: string) {
     await apiPost("/status", { content });
 }
 
-/*************  ✨ Windsurf Command ⭐  *************/
-/**
- * Get a post by id.
- * @param {string} id - The id of the post.
- * @returns {Promise<Post>} - A promise that resolves to the post object.
- * @throws {Error} - If the post does not exist.
- */
-/*******  8ffc16c1-e1bf-41df-8cd8-850b8914cfa3  *******/
 export async function getPost(id: string): Promise<Post> {
     const res = await apiGet(`/status/${id}`);  // -> { data: Post }
     return res.data;

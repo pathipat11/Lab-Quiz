@@ -40,6 +40,7 @@ const handleResponse = async (res: Response) => {
 
 const withApiKey = (headers: Record<string, string> = {}) => ({
   "x-api-key": API_KEY,
+  Accept: "application/json",
   ...headers,
 });
 

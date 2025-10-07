@@ -1,14 +1,25 @@
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState, useCallback } from "react";
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet } from "react-native";
-import { addComment, getStatusById, StatusItem, displayName } from "../../services/statusService";
+import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert } from "react-native";
+import { addComment, getStatusById, StatusItem, displayName, isMine, deleteComment, deleteStatus } from "../../services/statusService";
 import { useTheme } from "../../context/ThemeContext";
+import { getProfile } from "../../services/authService";
 
 export default function PostDetail() {
     const { color } = useTheme();
     const { id } = useLocalSearchParams<{ id: string }>();
     const [post, setPost] = useState<StatusItem | null>(null);
     const [text, setText] = useState("");
+    const [myEmail, setMyEmail] = useState<string | null>(null);
+
+    useEffect(() => {
+        (async () => {
+        try {
+            const p = await getProfile();
+            setMyEmail(p?.email ?? p?.data?.email ?? null);
+        } catch {}
+        })();
+    }, []);
 
     const load = useCallback(async () => {
         if (!id) return;
@@ -25,14 +36,59 @@ export default function PostDetail() {
         await load();
     };
 
+    const onDeleteComment = async (cid: string) => {
+    Alert.alert("ลบคอมเมนต์", "ต้องการลบคอมเมนต์นี้หรือไม่?", [
+        { text: "ยกเลิก", style: "cancel" },
+        {
+        text: "ลบ",
+        style: "destructive",
+        onPress: async () => {
+            try {
+            await deleteComment(cid);
+            await load();
+            } catch (e: any) {
+            // ถ้า backend ยัง 500 อยู่ จะมาลงที่นี่
+            Alert.alert(
+                "ลบคอมเมนต์ไม่สำเร็จ",
+                e?.message ?? "เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ (500)"
+            );
+            }
+        },
+        },
+    ]);
+    };
+
+    const onDeletePost = async () => {
+        Alert.alert("ลบโพสต์", "ต้องการลบโพสต์นี้หรือไม่?", [
+            { text: "ยกเลิก", style: "cancel" },
+            { text: "ลบ", style: "destructive", onPress: async () => {
+                try {
+                await deleteStatus(id!);
+                // ถ้าใช้ router: router.back();
+                } catch (e: any) {
+                Alert.alert("ลบโพสต์ไม่สำเร็จ", e?.message ?? "เกิดข้อผิดพลาด (500)");
+                }
+            }}
+        ]);
+    };
+
     if (!post) return null;
+
+    const minePost = isMine(post.createdBy, myEmail);
 
     return (
         <View style={[styles.screen, { backgroundColor: color.background }]}>
         <View style={[styles.card, { backgroundColor: color.surface }]}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
             <Text style={[styles.title, { color: color.text }]}>
-            {displayName(post.createdBy)}
+                {displayName(post.createdBy)}
             </Text>
+            {minePost && (
+                <TouchableOpacity onPress={onDeletePost}>
+                <Text style={{ color: "#e74c3c", fontWeight: "700" }}>ลบโพสต์</Text>
+                </TouchableOpacity>
+            )}
+            </View>
             <Text style={{ color: color.text }}>{post.content}</Text>
         </View>
 
@@ -41,17 +97,27 @@ export default function PostDetail() {
             data={post.comment}
             keyExtractor={(c) => c._id}
             ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
-            renderItem={({ item }) => (
-            <View style={[styles.cItem, { backgroundColor: color.surface }]}>
-                <Text style={[styles.cName, { color: color.text }]}>
-                {displayName(item.createdBy)}
-                </Text>
+            renderItem={({ item }) => {
+            const mine = isMine(item.createdBy, myEmail);
+            return (
+                <View style={[styles.cItem, { backgroundColor: color.surface }]}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                    <Text style={[styles.cName, { color: color.text }]}>
+                    {displayName(item.createdBy)}
+                    </Text>
+                    {mine && (
+                    <TouchableOpacity onPress={() => onDeleteComment(item._id)}>
+                        <Text style={{ color: "#e74c3c", fontWeight: "700" }}>ลบ</Text>
+                    </TouchableOpacity>
+                    )}
+                </View>
                 <Text style={{ color: color.text }}>{item.content}</Text>
                 <Text style={{ color: color.textSecondary, fontSize: 12 }}>
-                {new Date(item.createdAt).toLocaleString()}
+                    {new Date(item.createdAt).toLocaleString()}
                 </Text>
-            </View>
-            )}
+                </View>
+            );
+            }}
         />
 
         <View style={{ gap: 8, marginTop: 10 }}>
