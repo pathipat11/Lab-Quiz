@@ -5,7 +5,7 @@ import {
     } from "react-native";
 import {
     listStatuses, createStatus, likeStatus, unlikeStatus,
-    StatusItem, displayName, isMine, deleteStatus
+    StatusItem, displayName, isMine, deleteStatus, didILike
 } from "../../services/statusService";
 import { useTheme } from "../../context/ThemeContext";
 import { Link } from "expo-router";
@@ -52,13 +52,19 @@ export default function Feed() {
 
     const onToggleLike = async (p: StatusItem) => {
         try {
-        if (p.hasLiked) await unlikeStatus(p._id);
-        else await likeStatus(p._id);
-        await load();
+            const iLiked = didILike(p, myEmail);
+            if (iLiked) {
+            await unlikeStatus(p._id);
+            } else {
+            await likeStatus(p._id);
+            }
+            await load();
         } catch (e: any) {
-        Alert.alert("ไม่สามารถกดถูกใจ", e?.message ?? "เกิดข้อผิดพลาด");
+            Alert.alert("ไม่สามารถกดถูกใจ", e?.message ?? "เกิดข้อผิดพลาด");
         }
     };
+
+
 
     const onDeletePost = async (id: string) => {
         Alert.alert("ลบโพสต์", "ต้องการลบโพสต์นี้หรือไม่?", [

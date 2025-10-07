@@ -57,42 +57,62 @@ export async function getStatusById(id: string): Promise<StatusItem> {
 }
 
 export async function likeStatus(statusId: string) {
+    // Like (สเปค: POST /like)
     await apiPost("/like", { statusId });
 }
 
 export async function unlikeStatus(statusId: string) {
-    // พยายามทีละรูปแบบเพื่อครอบคลุม backend ที่ต่างกัน
-    const tries = [
-        () => apiDelete("/like", { statusId }), // DELETE + body
-        () => apiDelete(`/like?statusId=${encodeURIComponent(statusId)}`), // DELETE + query
-        () => apiDelete("/unlike", { statusId }),
-        () => apiDelete(`/unlike?statusId=${encodeURIComponent(statusId)}`),
-        () => apiPost("/unlike", { statusId }), // บางที่ใช้ POST /unlike
-    ];
-    let lastErr: any;
-    for (const t of tries) {
-        try { await t(); return; } catch (e) { lastErr = e; }
+    // Unlike (สเปค: DELETE /like หรือ DELETE /unlike) — ลองตามลำดับ
+    try {
+        await apiDelete("/like", { statusId });
+        return;
+    } catch (e) {
+        // fallback: DELETE /unlike
     }
-    throw lastErr;
+    await apiDelete("/unlike", { statusId });
 }
+
+export const didILike = (
+    p: { like?: Array<string | { _id?: string; email?: string }>; hasLiked?: boolean },
+    myEmail?: string | null
+) => {
+    if (p.hasLiked === true) return true;
+    if (!myEmail) return false;
+    const me = myEmail.toLowerCase();
+    const arr = p.like ?? [];
+    return arr.some((v) => {
+        if (!v) return false;
+        if (typeof v === "string") {
+            // บางระบบเก็บเป็น email เป็น string (ถ้าเป็น userId ก็เทียบไม่ได้ แต่ดีกว่าไม่เช็คเลย)
+            return v.toLowerCase() === me;
+        }
+        return (v.email || "").toLowerCase() === me;
+    });
+};
 
 export async function deleteStatus(id: string) {
-    const tries = [
-        () => apiDelete(`/status/${id}`),                          // DELETE /status/{id}
-        () => apiDelete(`/status?id=${encodeURIComponent(id)}`),   // DELETE /status?id=...
-        () => apiPost("/status/delete", { id }),                   // POST /status/delete
-        () => apiDelete("/status", { id }),                        // DELETE /status (body)
-    ];
-    let lastErr: any;
-    for (const t of tries) {
-        try { await t(); return; } catch (e) { lastErr = e; }
-    }
-    throw lastErr;
+    await apiDelete(`/status/${id}`);
 }
 
-export async function deleteComment(id: string) {
-    await apiDelete(`/comment/${id}`);
+// export async function deleteComment(commentId: string, statusId?: string) {
+//     // ลองหลายแบบ: DELETE /comment/{id}, DELETE /comment?id=, DELETE /comment (body), POST /comment/delete
+//     const tries = [
+//         () => apiDelete(`/comment/${commentId}`),
+//         () => apiDelete(`/comment?id=${encodeURIComponent(commentId)}`),
+//         () => apiDelete("/comment", { id: commentId, statusId }), // <- หลายระบบรองรับแบบนี้
+//         () => apiPost("/comment/delete", { id: commentId, statusId }), // fallback
+//     ];
+//     let lastErr: any;
+//     for (const t of tries) {
+//         try { await t(); return; } catch (e) { lastErr = e; }
+//     }
+//     throw lastErr;
+// }
+
+export async function deleteComment(_id: string, _statusId?: string) {
+    throw new Error("เซิร์ฟเวอร์ยังไม่รองรับการลบคอมเมนต์");
 }
+
 
 export async function addComment(statusId: string, content: string) {
     await apiPost("/comment", { statusId, content });
