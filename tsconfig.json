@@ -1,0 +1,17 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "types": [
+      "node"
+    ],
+    "skipLibCheck": true
+  },
+  "include": [
+    "declarations.d.ts",
+    "app",
+    "context",
+    "app/services",
+    "types",
+    "hooks"
+  ]
+}
