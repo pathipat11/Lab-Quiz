@@ -36,6 +36,22 @@ This README documents the project structure, setup, configuration, core screens,
 
 ---
 
+## 🎬 Demo Video
+
+Below is a quick demo showing navigation, feed posting, and theme toggle:
+
+<img src="assets/videos/Lab-Quiz-Hybrid-Mobile-demo.gif" alt="App Demo" width="260" />
+
+Alternatively, you can include your `.mp4` demo:
+
+```markdown
+<video src="assets/videos/demo.mp4" width="300" controls></video>
+```
+
+> Replace `assets/videos/demo.mp4` with your own exported demo file.
+
+---
+
 ## 📁 Project Structure
 
 ```bash
@@ -87,21 +103,6 @@ Lab-Quiz-Hybrid-Mobile/
 
 ---
 
-## 🎬 Demo Video
-
-Below is a quick demo showing navigation, feed posting, and theme toggle:
-
-<img src="assets/videos/demo.gif" alt="App Demo" width="260" />
-
-Alternatively, you can include your `.mp4` demo:
-
-```markdown
-<video src="assets/videos/demo.mp4" width="300" controls></video>
-```
-
-> Replace `assets/videos/demo.mp4` with your own exported demo file.
-
----
 
 ## 🔧 Configuration
 
