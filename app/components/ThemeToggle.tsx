@@ -7,9 +7,10 @@ import Feather from "react-native-vector-icons/Feather";
 const WIDTH = 62;
 const HEIGHT = 30;
 const KNOB = 24;
+const INSET = 5;
 
 const ThemeToggle: React.FC = () => {
-  const { isDarkMode, toggleTheme, color } = useTheme();
+  const { isDarkMode, toggleTheme } = useTheme();
   const x = useRef(new Animated.Value(isDarkMode ? 1 : 0)).current;
 
   useEffect(() => {
@@ -23,7 +24,8 @@ const ThemeToggle: React.FC = () => {
 
   const knobLeft = x.interpolate({
     inputRange: [0, 1],
-    outputRange: [3, WIDTH - KNOB - 3],
+    outputRange: [INSET, WIDTH - KNOB - INSET],
+    extrapolate: "clamp",
   });
 
   const grad = useMemo<[string, string]>(
@@ -31,21 +33,28 @@ const ThemeToggle: React.FC = () => {
     [isDarkMode]
   );
 
+  // สี/ขอบของปุ่มให้เด่นชัดขึ้น
+  const knobBg = isDarkMode ? "#FFFFFF" : "#FAFAFA";
+  const knobBorder = isDarkMode ? "rgba(0,0,0,0.25)" : "rgba(0,0,0,0.08)";
+
   return (
     <TouchableOpacity activeOpacity={0.9} onPress={toggleTheme}>
       <LinearGradient colors={grad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.wrap}>
-        <View style={[styles.track, { borderColor: isDarkMode ? "#2a2a2d" : "#ffffff55" }]}>
+        <View
+          style={[
+            styles.track,
+            { borderColor: isDarkMode ? "#2a2a2d" : "#ffffff55" },
+          ]}
+        >
           <Animated.View
             style={[
               styles.knob,
               {
                 left: knobLeft,
-                backgroundColor: color.surface,
-                shadowColor: "#000",
-                shadowOpacity: 0.25,
-                shadowRadius: 4,
-                shadowOffset: { width: 0, height: 2 },
-                elevation: 3,
+                top: (HEIGHT - KNOB) / 2,
+                backgroundColor: knobBg,
+                borderColor: knobBorder,
+                borderWidth: StyleSheet.hairlineWidth,
               },
             ]}
           />
@@ -68,7 +77,6 @@ const styles = StyleSheet.create({
     width: WIDTH,
     height: HEIGHT,
     borderRadius: HEIGHT / 2,
-    padding: 2,
     shadowColor: "#000",
     shadowOpacity: 0.15,
     shadowRadius: 6,

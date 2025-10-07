@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
-  View, TouchableOpacity, Text, StyleSheet, Modal, Pressable, Animated, Platform, LayoutChangeEvent
+  View, TouchableOpacity, Text, StyleSheet, Modal, Pressable, Animated, Platform, LayoutChangeEvent, Image
 } from "react-native";
 import { useRouter, usePathname } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -18,6 +18,11 @@ const getInitialFromUser = (u: any) => {
   return first ? first.toUpperCase() : null;
 };
 
+const getAvatarUrl = (u: any) =>
+  u?.image && u.image.length > 4 ? u.image :
+  u?.education?.image && u.education.image.length > 4 ? u.education.image :
+  null;
+
 const AuthToggle: React.FC = () => {
   const { color, isDarkMode } = useTheme();
   const router = useRouter();
@@ -25,6 +30,7 @@ const AuthToggle: React.FC = () => {
   const isSignin = pathname.includes("signin");
 
   const [usernameInitial, setUsernameInitial] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [showMenu, setShowMenu] = useState(false);
 
   // สำหรับวัดตำแหน่ง avatar เพื่อวางเมนูให้ชิดปุ่ม
@@ -32,40 +38,44 @@ const AuthToggle: React.FC = () => {
   const [menuPos, setMenuPos] = useState<{ x: number; y: number }>({ x: 20, y: 50 });
 
   const scale = useRef(new Animated.Value(1)).current;
-
   const pressIn = () => Animated.spring(scale, { toValue: 0.94, useNativeDriver: true }).start();
   const pressOut = () => Animated.spring(scale, { toValue: 1, friction: 5, tension: 120, useNativeDriver: true }).start();
 
-  async function loadUserInitial() {
+  async function loadUser() {
     try {
+      // 1) ลองอ่านจาก storage ก่อน
       const userStr = await AsyncStorage.getItem("user");
       if (userStr) {
         const parsed = JSON.parse(userStr);
-        const init = getInitialFromUser(parsed);
-        if (init) { setUsernameInitial(init); return; }
+        setUsernameInitial(getInitialFromUser(parsed));
+        setAvatarUrl(getAvatarUrl(parsed));
+      } else {
+        // 2) ถ้าไม่มี ยิง /profile แล้วเก็บไว้
+        const profile = await getProfile();
+        await AsyncStorage.setItem("user", JSON.stringify(profile));
+        setUsernameInitial(getInitialFromUser(profile));
+        setAvatarUrl(getAvatarUrl(profile));
       }
-      const profile = await getProfile();
-      await AsyncStorage.setItem("user", JSON.stringify(profile));
-      const init = getInitialFromUser(profile);
-      setUsernameInitial(init);
     } catch {
       setUsernameInitial(null);
+      setAvatarUrl(null);
     }
   }
 
-  useEffect(() => { loadUserInitial(); }, []);
-  useFocusEffect(useCallback(() => { loadUserInitial(); }, []));
+  useEffect(() => { loadUser(); }, []);
+  useFocusEffect(useCallback(() => { loadUser(); }, []));
 
   const handleLogout = async () => {
     await AsyncStorage.removeItem("authToken");
     await AsyncStorage.removeItem("user");
     setShowMenu(false);
     setUsernameInitial(null);
+    setAvatarUrl(null);
     router.replace("/signin");
   };
 
   const handlePress = () => {
-    if (usernameInitial) {
+    if (usernameInitial || avatarUrl) {
       // คำนวณตำแหน่ง anchor ของเมนู
       avatarRef.current?.measureInWindow((x, y) => setMenuPos({ x, y: y + 44 }));
       setShowMenu(true);
@@ -74,10 +84,11 @@ const AuthToggle: React.FC = () => {
     }
   };
 
-  const onAvatarLayout = (e: LayoutChangeEvent) => {
-    // กันกรณีแรกเข้า
+  const onAvatarLayout = (_e: LayoutChangeEvent) => {
     avatarRef.current?.measureInWindow((x, y) => setMenuPos({ x, y: y + 44 }));
   };
+
+  const hasUser = Boolean(usernameInitial || avatarUrl);
 
   return (
     <>
@@ -90,11 +101,15 @@ const AuthToggle: React.FC = () => {
           onPressOut={pressOut}
           onPress={handlePress}
         >
-          {usernameInitial ? (
+          {hasUser ? (
             <View style={[styles.avatarWrap, isDarkMode ? styles.glassDark : styles.glassLight]}>
-              <View style={[styles.avatarCircle, { backgroundColor: color.primary }]}>
-                <Text style={styles.avatarText}>{usernameInitial}</Text>
-              </View>
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={styles.avatarImg} />
+              ) : (
+                <View style={[styles.avatarCircle, { backgroundColor: color.primary }]}>
+                  <Text style={styles.avatarText}>{usernameInitial}</Text>
+                </View>
+              )}
             </View>
           ) : (
             <View style={[styles.button, { backgroundColor: color.primary }]}>
@@ -122,9 +137,7 @@ const AuthToggle: React.FC = () => {
             <View
               style={[
                 styles.caret,
-                {
-                  borderBottomColor: isDarkMode ? "#121212" : "#fff",
-                },
+                { borderBottomColor: isDarkMode ? "#121212" : "#fff" },
               ]}
             />
 
@@ -155,6 +168,8 @@ const AuthToggle: React.FC = () => {
 
 export default AuthToggle;
 
+const AVATAR_SIZE = 40;
+
 const styles = StyleSheet.create({
   // ปุ่ม sign-in/up
   button: {
@@ -174,10 +189,10 @@ const styles = StyleSheet.create({
   },
   buttonText: { color: "#fff", fontWeight: "700", fontSize: 12, letterSpacing: 0.3 },
 
-  // อวตารตัวอักษร
+  // อวตาร
   avatarWrap: {
     marginLeft: 5,
-    borderRadius: 22,
+    borderRadius: AVATAR_SIZE / 2 + 2,
     padding: 2,
     ...Platform.select({
       ios: {
@@ -189,17 +204,25 @@ const styles = StyleSheet.create({
       android: { elevation: 4 },
     }),
   },
-  glassLight: { backgroundColor: "rgba(255,255,255,0.6)" },
-  glassDark: { backgroundColor: "rgba(255,255,255,0.08)" },
+  glassLight: { backgroundColor: "rgba(0,0,0,0.06)" },
+  glassDark: { backgroundColor: "rgba(255,255,255,0.10)" },
 
   avatarCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: AVATAR_SIZE / 2,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarText: { color: "#fff", fontWeight: "800", fontSize: 16 },
+
+  avatarImg: {
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: AVATAR_SIZE / 2,
+    borderWidth: 1.5,
+    borderColor: "#fff",
+  },
 
   // เมนู popover
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.18)" },
