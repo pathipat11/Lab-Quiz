@@ -1,10 +1,17 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 
+// const EXTRA = (Constants.expoConfig?.extra as any) || {};
+// const API_URL: string = EXTRA.apiUrl;
+// const API_KEY: string = EXTRA.apiKey;
+// console.log("API_URL =", API_URL);
+// console.log("EXTRA =", EXTRA);
+
 const EXTRA = (Constants.expoConfig?.extra as any) || {};
-const API_URL: string = EXTRA.apiUrl;
-const API_KEY: string = EXTRA.apiKey;
+const API_URL = (Constants.expoConfig?.extra as any)?.apiUrl as string;
+const API_KEY = (Constants.expoConfig?.extra as any)?.apiKey as string;
 console.log("API_URL =", API_URL);
+console.log("API_KEY =", API_KEY);
 console.log("EXTRA =", EXTRA);
 
 
@@ -77,11 +84,32 @@ export const apiPut = async (endpoint: string, body: any) => {
   return handleResponse(res);
 };
 
-export const apiDelete = async (endpoint: string) => {
+export const apiPatch = async (endpoint: string, body: any) => {
+  const token = await getToken();
+  const res = await fetch(`${API_URL}${endpoint}`, {
+    method: "PATCH",
+    headers: withApiKey({
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    }),
+    body: JSON.stringify(body),
+  });
+  return handleResponse(res);
+};
+
+
+export const apiDelete = async (
+  endpoint: string,
+  body?: any
+) => {
   const token = await getToken();
   const res = await fetch(`${API_URL}${endpoint}`, {
     method: "DELETE",
-    headers: withApiKey(token ? { Authorization: `Bearer ${token}` } : {}),
+    headers: withApiKey({
+      "Content-Type": body ? "application/json" : undefined as any,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    } as any),
+    body: body ? JSON.stringify(body) : undefined,
   });
   return handleResponse(res);
 };

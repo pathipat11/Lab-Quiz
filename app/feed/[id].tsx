@@ -1,60 +1,82 @@
 import { useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
-import { View, Text, TextInput, Button, FlatList } from "react-native";
-import { getPost, addComment, Post } from "../../services/feedService";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useEffect, useState, useCallback } from "react";
+import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet } from "react-native";
+import { addComment, getStatusById, StatusItem, displayName } from "../../services/statusService";
 import { useTheme } from "../../context/ThemeContext";
 
 export default function PostDetail() {
     const { color } = useTheme();
     const { id } = useLocalSearchParams<{ id: string }>();
-    const [post, setPost] = useState<Post | undefined>();
+    const [post, setPost] = useState<StatusItem | null>(null);
     const [text, setText] = useState("");
-    const [username, setUsername] = useState<string>("");
 
-    useEffect(() => { (async () => {
-        setPost(await getPost(id));
-        const u = await AsyncStorage.getItem("user");
-        setUsername(u ? (JSON.parse(u).username ?? "user") : "user");
-    })(); }, [id]);
+    const load = useCallback(async () => {
+        if (!id) return;
+        const data = await getStatusById(id);
+        setPost(data);
+    }, [id]);
 
-    async function onAdd() {
+    useEffect(() => { load(); }, [load]);
+
+    const onAdd = async () => {
         if (!text.trim()) return;
-        await addComment(id, username, text.trim());
-        setText(""); setPost(await getPost(id));
-    }
+        await addComment(id!, text.trim());
+        setText("");
+        await load();
+    };
 
     if (!post) return null;
 
     return (
-        <View style={{ flex:1, padding:16, width:"100%", maxWidth:700, alignSelf:"center", gap:12 }}>
-        <View style={{ borderWidth:1, borderColor:"#eee", borderRadius:12, padding:12, backgroundColor: color.surface }}>
-            <Text style={{ fontWeight:"700", color: color.text }}>{post.user}</Text>
+        <View style={[styles.screen, { backgroundColor: color.background }]}>
+        <View style={[styles.card, { backgroundColor: color.surface }]}>
+            <Text style={[styles.title, { color: color.text }]}>
+            {displayName(post.createdBy)}
+            </Text>
             <Text style={{ color: color.text }}>{post.content}</Text>
         </View>
 
-        <Text style={{ fontSize:18, fontWeight:"700", color: color.text }}>คอมเมนต์</Text>
+        <Text style={[styles.h2, { color: color.text }]}>คอมเมนต์</Text>
         <FlatList
-            data={post.comments}
-            keyExtractor={(c) => c.id}
-            ItemSeparatorComponent={() => <View style={{ height:8 }} />}
+            data={post.comment}
+            keyExtractor={(c) => c._id}
+            ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
             renderItem={({ item }) => (
-            <View style={{ borderWidth:1, borderColor:"#eee", borderRadius:12, padding:10, backgroundColor: color.surface }}>
-                <Text style={{ fontWeight:"600", color: color.text }}>{item.user}</Text>
-                <Text style={{ color: color.text }}>{item.text}</Text>
+            <View style={[styles.cItem, { backgroundColor: color.surface }]}>
+                <Text style={[styles.cName, { color: color.text }]}>
+                {displayName(item.createdBy)}
+                </Text>
+                <Text style={{ color: color.text }}>{item.content}</Text>
+                <Text style={{ color: color.textSecondary, fontSize: 12 }}>
+                {new Date(item.createdAt).toLocaleString()}
+                </Text>
             </View>
             )}
         />
 
-        <View style={{ gap:8 }}>
+        <View style={{ gap: 8, marginTop: 10 }}>
             <TextInput
             placeholder="พิมพ์คอมเมนต์..."
             placeholderTextColor={color.textSecondary}
-            style={{ borderWidth:1, borderColor:"#ddd", padding:12, borderRadius:12, color: color.text }}
-            value={text} onChangeText={setText}
+            style={[styles.input, { color: color.text, borderColor: "#eaeaea" }]}
+            value={text}
+            onChangeText={setText}
             />
-            <Button title="ส่งคอมเมนต์" onPress={onAdd} />
+            <TouchableOpacity onPress={onAdd} style={[styles.sendBtn, { backgroundColor: color.primary }]}>
+            <Text style={{ color: "#fff", fontWeight: "700" }}>ส่งคอมเมนต์</Text>
+            </TouchableOpacity>
         </View>
         </View>
     );
 }
+
+const styles = StyleSheet.create({
+    screen: { flex: 1, padding: 14 },
+    card: { padding: 12, borderRadius: 12, marginBottom: 10 },
+    title: { fontWeight: "700", marginBottom: 6 },
+    h2: { fontSize: 18, fontWeight: "700", marginBottom: 8 },
+    cItem: { padding: 10, borderRadius: 10 },
+    cName: { fontWeight: "600", marginBottom: 2 },
+    input: { borderWidth: 1, borderRadius: 10, padding: 10 },
+    sendBtn: { alignSelf: "flex-start", paddingVertical: 10, paddingHorizontal: 16, borderRadius: 10 },
+});

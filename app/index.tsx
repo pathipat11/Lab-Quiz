@@ -13,7 +13,7 @@ export default function IndexPage() {
   const checkLogin = async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
-      // console.log("Token:", token);
+      console.log("Token:", token);
       console.log("isBiometricSupported:", isBiometricSupported);
       console.log("isEnrolled:", isEnrolled);
 

@@ -1,29 +1,51 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { apiGet, apiPost, apiDelete } from "./api";
 
-export type Comment = { id: string; user: string; text: string; createdAt: string };
-export type Post = { id: string; user: string; content: string; createdAt: string; likes: string[]; comments: Comment[] };
-const KEY = "feed.posts.v1";
+export type Post = {
+    _id: string;
+    content: string;
+    createdBy: string; // email หรือ id แล้วแต่หลังบ้าน
+    likeCount: number;
+    hasLiked: boolean;
+    comment: {
+        _id: string;
+        content: string;
+        createdBy: string;
+        createdAt: string;
+    }[];
+    createdAt: string;
+};
 
-async function load(): Promise<Post[]> {
-    const raw = await AsyncStorage.getItem(KEY);
-    return raw ? JSON.parse(raw) : [];
+export async function listPosts(): Promise<Post[]> {
+    const res = await apiGet("/status");        // -> { data: Post[] }
+    return res?.data ?? [];
 }
-async function save(posts: Post[]) { await AsyncStorage.setItem(KEY, JSON.stringify(posts)); }
 
-export async function listPosts() { return load(); }
-export async function createPost(user: string, content: string) {
-    const posts = await load();
-    const post: Post = { id: crypto.randomUUID(), user, content, createdAt: new Date().toISOString(), likes: [], comments: [] };
-    posts.unshift(post); await save(posts); return post;
+export async function createPost(content: string) {
+    await apiPost("/status", { content });
 }
-export async function toggleLike(postId: string, user: string) {
-    const posts = await load(); const p = posts.find(x => x.id === postId); if (!p) return;
-    const i = p.likes.indexOf(user); i >= 0 ? p.likes.splice(i, 1) : p.likes.push(user);
-    await save(posts); return p;
+
+/*************  ✨ Windsurf Command ⭐  *************/
+/**
+ * Get a post by id.
+ * @param {string} id - The id of the post.
+ * @returns {Promise<Post>} - A promise that resolves to the post object.
+ * @throws {Error} - If the post does not exist.
+ */
+/*******  8ffc16c1-e1bf-41df-8cd8-850b8914cfa3  *******/
+export async function getPost(id: string): Promise<Post> {
+    const res = await apiGet(`/status/${id}`);  // -> { data: Post }
+    return res.data;
 }
-export async function addComment(postId: string, user: string, text: string) {
-    const posts = await load(); const p = posts.find(x => x.id === postId); if (!p) return;
-    p.comments.push({ id: crypto.randomUUID(), user, text, createdAt: new Date().toISOString() });
-    await save(posts); return p;
+
+export async function like(statusId: string) {
+    await apiPost("/like", { statusId });
 }
-export async function getPost(postId: string) { const posts = await load(); return posts.find(x => x.id === postId); }
+
+export async function unlike(statusId: string) {
+    // บางหลังบ้านใช้ DELETE /unlike (body: {statusId})
+    await apiDelete("/unlike", { statusId });
+}
+
+export async function addComment(statusId: string, content: string) {
+    await apiPost("/comment", { statusId, content });
+}

@@ -1,210 +1,185 @@
-import React, { useRef } from "react";
+// app/main.tsx
+import React, { useEffect, useRef, useState } from "react";
 import {
     StyleSheet,
     Image,
     Text,
     View,
     TouchableOpacity,
-    Linking,
     ScrollView,
     Animated,
     TouchableWithoutFeedback,
 } from "react-native";
-import { Link } from "expo-router";
-import Icon from "react-native-vector-icons/FontAwesome";
+import { Link, useRouter } from "expo-router";
 import { useTheme } from "../context/ThemeContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getProfile } from "../services/authService";
 
+// ===== Animated Card =====
 type AnimatedCardProps = {
     children: React.ReactNode;
     color: {
         surface: string;
-        primary?: string;
-        text?: string;
-        textSecondary?: string;
-        buttonAbout?: string;
-        buttonBooks?: string;
-        background?: string;
     };
 };
-
-// 🌀 Card with animated scale
 const AnimatedCard: React.FC<AnimatedCardProps> = ({ children, color }) => {
     const scale = useRef(new Animated.Value(1)).current;
-
-    const onPressIn = () => {
-        Animated.spring(scale, {
-            toValue: 0.97,
-            useNativeDriver: true,
-        }).start();
-    };
-
-    const onPressOut = () => {
-        Animated.spring(scale, {
-            toValue: 1,
-            friction: 3,
-            tension: 40,
-            useNativeDriver: true,
-        }).start();
-    };
-
     return (
-        <TouchableWithoutFeedback onPressIn={onPressIn} onPressOut={onPressOut}>
-            <Animated.View
-                style={[
-                    styles.card,
-                    { backgroundColor: color.surface, transform: [{ scale }] },
-                ]}
-            >
-                {children}
-            </Animated.View>
+        <TouchableWithoutFeedback
+        onPressIn={() =>
+            Animated.spring(scale, { toValue: 0.97, useNativeDriver: true }).start()
+        }
+        onPressOut={() =>
+            Animated.spring(scale, { toValue: 1, friction: 3, tension: 40, useNativeDriver: true }).start()
+        }
+        >
+        <Animated.View
+            style={[styles.card, { backgroundColor: color.surface, transform: [{ scale }] }]}
+        >
+            {children}
+        </Animated.View>
         </TouchableWithoutFeedback>
     );
 };
 
+// ===== Home =====
 const Home: React.FC = () => {
     const { color } = useTheme();
+    const router = useRouter();
 
-    const contactLinks: {
-        icon: string;
-        color: string;
-        label: string;
-        value: string;
-        link: string;
-    }[] = [
-        {
-            icon: "facebook-square",
-            color: "#4267B2",
-            label: "Facebook",
-            value: "Pathipat Mattra",
-            link: "https://facebook.com/pathipat.mattra",
-        },
-        {
-            icon: "github",
-            color: "#000",
-            label: "GitHub",
-            value: "pathipat11",
-            link: "https://github.com/pathipat11",
-        },
-        {
-            icon: "linkedin-square",
-            color: "#0077B5",
-            label: "LinkedIn",
-            value: "Pathipat Mattra",
-            link: "https://linkedin.com/in/viixl",
-        },
-    ];
+    type MiniUser = {
+        firstname?: string;
+        lastname?: string;
+        email?: string;
+        image?: string;
+        education?: { image?: string; enrollmentYear?: string; studentId?: string };
+    };
+    const [me, setMe] = useState<MiniUser | null>(null);
+
+    useEffect(() => {
+        // โหลดข้อมูลโปรไฟล์ (ถ้ามี token)
+        (async () => {
+        try {
+            const token = await AsyncStorage.getItem("authToken");
+            if (!token) return;
+            const p = await getProfile(); // คุณมี service นี้แล้ว
+            setMe({
+            firstname: p.firstname ?? p.username,
+            lastname: p.lastname,
+            email: p.email,
+            image: p.image ?? p?.education?.image,
+            education: {
+                image: p?.education?.image,
+                enrollmentYear: p?.education?.enrollmentYear,
+                studentId: p?.education?.studentId,
+            },
+            });
+        } catch {
+            // เงียบไว้ ไม่บล็อกหน้า home
+        }
+        })();
+    }, []);
+
+    const avatarSrc =
+        me?.image && me.image.length > 4
+        ? { uri: me.image }
+        : require("../assets/image/profile.jpg");
+
+    const yearChips = ["2565", "2566", "2567", "2568"];
 
     return (
         <ScrollView style={{ backgroundColor: color.background }}>
-            <View style={styles.container}>
-                {/* Profile */}
-                <View style={styles.profileBox}>
-                    <Image
-                        source={require("../assets/image/profile.jpg")}
-                        style={styles.profile}
-                    />
-                    <Text style={[styles.name, { color: color.text }]}>
-                        Pathipat Mattra
-                    </Text>
-                    <Text style={[styles.sub, { color: color.textSecondary }]}>
-                        Student Number: 65345293-2
-                    </Text>
+        <View style={styles.container}>
+            {/* Header + Avatar */}
+            <View style={styles.headerRow}>
+            <View>
+                <Text style={[styles.hello, { color: color.text }]}>
+                สวัสดี{me?.firstname ? `, ${me.firstname}` : ""} 👋
+                </Text>
+                <Text style={{ color: color.textSecondary }}>
+                {me?.email ?? "พร้อมใช้งานระบบ Classroom"}
+                </Text>
+            </View>
+
+            <TouchableOpacity onPress={() => router.push("/profile")}>
+                <Image source={avatarSrc} style={styles.profile} />
+            </TouchableOpacity>
+            </View>
+
+            {/* Profile quick info */}
+            <AnimatedCard color={color}>
+            <Text style={[styles.cardTitle, { color: color.primary }]}>ข้อมูลของฉัน</Text>
+            <View style={styles.infoRow}>
+                <Text style={[styles.label, { color: color.textSecondary }]}>ชื่อ</Text>
+                <Text style={[styles.value, { color: color.text }]}>
+                {me?.firstname || "-"} {me?.lastname || ""}
+                </Text>
+            </View>
+            <View style={styles.infoRow}>
+                <Text style={[styles.label, { color: color.textSecondary }]}>อีเมล</Text>
+                <Text style={[styles.value, { color: color.text }]}>{me?.email || "-"}</Text>
+            </View>
+            <View style={styles.infoRow}>
+                <Text style={[styles.label, { color: color.textSecondary }]}>รหัสนักศึกษา</Text>
+                <Text style={[styles.value, { color: color.text }]}>
+                {me?.education?.studentId || "-"}
+                </Text>
+            </View>
+            <View style={styles.infoRow}>
+                <Text style={[styles.label, { color: color.textSecondary }]}>ชั้นปี</Text>
+                <Text style={[styles.value, { color: color.text }]}>
+                {me?.education?.enrollmentYear || "-"}
+                </Text>
+            </View>
+
+            <Link href="/profile" style={[styles.linkBtn, { backgroundColor: color.primary }]}>
+                <Text style={styles.linkBtnText}>ไปที่โปรไฟล์</Text>
+            </Link>
+            </AnimatedCard>
+
+            {/* Quick actions */}
+            <View style={styles.grid}>
+            <Link href="/feed" style={[styles.tile, { backgroundColor: color.surface }]}>
+                <Text style={[styles.tileIcon, { color: color.primary }]}>📰</Text>
+                <Text style={[styles.tileLabel, { color: color.text }]}>ฟีดสถานะ</Text>
+                <Text style={{ color: color.textSecondary, fontSize: 12 }}>ดู/โพสต์/ไลก์/คอมเมนต์</Text>
+            </Link>
+
+            <View style={[styles.tile, { backgroundColor: color.surface }]}>
+                <Text style={[styles.tileIcon, { color: color.primary }]}>🎓</Text>
+                <Text style={[styles.tileLabel, { color: color.text }]}>รายชื่อรุ่น</Text>
+                <View style={styles.chipsRow}>
+                {yearChips.map((y) => (
+                    <Link key={y} href={`/class/${y}`} style={[styles.chip, { borderColor: "#EAEAEA" }]}>
+                    <Text style={{ fontWeight: "600", color: color.text }}>{y}</Text>
+                    </Link>
+                ))}
                 </View>
+            </View>
 
-                {/* Education */}
-                <AnimatedCard color={color}>
-                    <Text style={[styles.cardTitle, { color: color.primary }]}>
-                        Education
-                    </Text>
-                    <Text style={[styles.text, { color: color.textSecondary }]}>
-                        📚 Khon Kaen University
-                    </Text>
-                    <Text style={[styles.text, { color: color.textSecondary }]}>
-                        📘 Major: Computer Science
-                    </Text>
-                    <Text style={[styles.text, { color: color.textSecondary }]}>
-                        🧾 Bachelor of Science in Computer Science
-                    </Text>
-                </AnimatedCard>
+            <Link href="/setting" style={[styles.tile, { backgroundColor: color.surface }]}>
+                <Text style={[styles.tileIcon, { color: color.primary }]}>⚙️</Text>
+                <Text style={[styles.tileLabel, { color: color.text }]}>ตั้งค่า</Text>
+                <Text style={{ color: color.textSecondary, fontSize: 12 }}>ธีม/ไบโอเมตริก/ออกจากระบบ</Text>
+            </Link>
+            </View>
 
-                {/* Interests */}
-                <AnimatedCard color={color}>
-                    <Text style={[styles.cardTitle, { color: color.primary }]}>
-                        Interests
-                    </Text>
-                    <Text style={[styles.text, { color: color.textSecondary }]}>
-                        🔧 Web Application Development (Full-Stack / Back-end)
-                    </Text>
-                    <Text style={[styles.text, { color: color.textSecondary }]}>
-                        💻 Aspiring Software Engineer
-                    </Text>
-                </AnimatedCard>
-
-                {/* Contact */}
-                <AnimatedCard color={color}>
-                    <Text style={[styles.cardTitle, { color: color.primary }]}>
-                        Contact
-                    </Text>
-                    {contactLinks.map((item, idx) => (
-                        <TouchableOpacity
-                            key={idx}
-                            style={styles.contactCard}
-                            onPress={() => Linking.openURL(item.link)}
-                            activeOpacity={0.7}
-                        >
-                            <Icon
-                                name={item.icon}
-                                size={22}
-                                color={item.color}
-                                style={{ marginRight: 12 }}
-                            />
-                            <View>
-                                <Text
-                                    style={[
-                                        styles.contactLabel,
-                                        { color: color.text },
-                                    ]}
-                                >
-                                    {item.label}
-                                </Text>
-                                <Text
-                                    style={[
-                                        styles.contactValue,
-                                        { color: color.textSecondary },
-                                    ]}
-                                >
-                                    {item.value}
-                                </Text>
-                            </View>
-                        </TouchableOpacity>
-                    ))}
-                </AnimatedCard>
-
-                {/* About link */}
-                <Link
-                    href="/about"
-                    style={[
-                        styles.button,
-                        { backgroundColor: color.buttonAbout },
-                    ]}
-                >
-                    <Text style={{ color: "#fff", fontWeight: "600" }}>
-                        About the Course
-                    </Text>
+            {/* Go to docs or anything else */}
+            <AnimatedCard color={color}>
+            <Text style={[styles.cardTitle, { color: color.primary }]}>ลัดไปหน้าอื่น</Text>
+            <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
+                <Link href="/feed" style={[styles.smallBtn, { borderColor: "#EAEAEA" }]}>
+                <Text style={{ color: color.text }}>เปิดฟีด</Text>
                 </Link>
-
-                <Link
-                    href={"/book"}
-                    style={[
-                        styles.button,
-                        { backgroundColor: color.buttonBooks },
-                    ]}
-                >
-                    <Text style={{ color: "#fff", fontWeight: "600" }}>
-                        Book Collection
-                    </Text>
+                <Link href="/class/2565" style={[styles.smallBtn, { borderColor: "#EAEAEA" }]}>
+                <Text style={{ color: color.text }}>ชั้นปี 2565</Text>
+                </Link>
+                <Link href="/profile" style={[styles.smallBtn, { borderColor: "#EAEAEA" }]}>
+                <Text style={{ color: color.text }}>โปรไฟล์</Text>
                 </Link>
             </View>
+            </AnimatedCard>
+        </View>
         </ScrollView>
     );
 };
@@ -214,64 +189,88 @@ export default Home;
 const styles = StyleSheet.create({
     container: {
         paddingHorizontal: 20,
-        paddingTop: 30,
+        paddingTop: 24,
         paddingBottom: 40,
+        gap: 16,
     },
-    profileBox: {
+    headerRow: {
+        flexDirection: "row",
         alignItems: "center",
-        marginBottom: 24,
+        justifyContent: "space-between",
     },
-    profile: {
-        height: 128,
-        width: 128,
-        borderRadius: 64,
-        borderWidth: 3,
-        borderColor: "#4a90e2",
-        marginBottom: 10,
-    },
-    name: {
-        fontSize: 24,
+    hello: {
+        fontSize: 22,
         fontWeight: "700",
     },
-    sub: {
-        fontSize: 14,
-        marginTop: 2,
+    profile: {
+        height: 56,
+        width: 56,
+        borderRadius: 28,
+        borderWidth: 2,
+        borderColor: "#4a90e2",
     },
+
+    // Card
     card: {
         padding: 16,
         borderRadius: 14,
-        marginBottom: 18,
         elevation: 3,
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.08,
         shadowRadius: 4,
+        gap: 8,
     },
     cardTitle: {
-        fontSize: 18,
-        fontWeight: "600",
-        marginBottom: 8,
-    },
-    text: {
-        fontSize: 14,
+        fontSize: 16,
+        fontWeight: "700",
         marginBottom: 4,
     },
-    contactCard: {
+    infoRow: {
         flexDirection: "row",
-        alignItems: "center",
-        marginTop: 12,
+        justifyContent: "space-between",
+        paddingVertical: 4,
     },
-    contactLabel: {
-        fontSize: 14,
-        fontWeight: "600",
+    label: { fontWeight: "600" },
+    value: { fontWeight: "600" },
+
+    linkBtn: {
+        marginTop: 10,
+        alignSelf: "flex-start",
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: 12,
     },
-    contactValue: {
-        fontSize: 13,
+    linkBtnText: { color: "#fff", fontWeight: "700" },
+
+    // Grid quick actions
+    grid: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: 12,
     },
-    button: {
-        marginTop: 24,
-        paddingVertical: 12,
-        borderRadius: 8,
-        alignItems: "center",
-        textAlign: "center",
+    tile: {
+        flexGrow: 1,
+        minWidth: "46%",
+        padding: 14,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: "#EAEAEA",
+    },
+    tileIcon: { fontSize: 26, marginBottom: 6 },
+    tileLabel: { fontWeight: "700", marginBottom: 4 },
+
+    chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 },
+    chip: {
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        borderRadius: 999,
+        borderWidth: 1,
+    },
+
+    smallBtn: {
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 10,
+        borderWidth: 1,
     },
 });

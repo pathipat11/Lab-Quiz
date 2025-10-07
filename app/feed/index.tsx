@@ -1,61 +1,136 @@
-import { useEffect, useState } from "react";
-import { View, Text, TextInput, Button, FlatList, Pressable } from "react-native";
-import { listPosts, createPost, toggleLike, Post } from "../../services/feedService";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Link } from "expo-router";
+import { useEffect, useState, useCallback } from "react";
+import {
+    View, Text, TextInput, FlatList, RefreshControl,
+    TouchableOpacity, Image, StyleSheet
+} from "react-native";
+import {
+    listStatuses, createStatus, likeStatus, unlikeStatus, StatusItem, displayName
+} from "../../services/statusService";
 import { useTheme } from "../../context/ThemeContext";
+import { Link } from "expo-router";
 
 export default function Feed() {
     const { color } = useTheme();
-    const [posts, setPosts] = useState<Post[]>([]);
-    const [text, setText] = useState("");
-    const [username, setUsername] = useState<string>("");
+    const [posts, setPosts] = useState<StatusItem[]>([]);
+    const [content, setContent] = useState("");
+    const [refreshing, setRefreshing] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
 
-    useEffect(() => { (async () => {
-        const u = await AsyncStorage.getItem("user");
-        setUsername(u ? (JSON.parse(u).username ?? "user") : "user");
-        setPosts(await listPosts());
-    })(); }, []);
+    const load = useCallback(async () => {
+        const data = await listStatuses();
+        setPosts(data);
+    }, []);
 
-    async function onCreate() {
-        if (!text.trim()) return;
-        await createPost(username, text.trim());
-        setText(""); setPosts(await listPosts());
-    }
-    async function onLike(id: string) {
-        await toggleLike(id, username);
-        setPosts(await listPosts());
-    }
+    useEffect(() => { load(); }, [load]);
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await load();
+        setRefreshing(false);
+    }, [load]);
+
+    const onSubmit = async () => {
+        if (!content.trim() || submitting) return;
+        setSubmitting(true);
+        await createStatus(content.trim());
+        setContent("");
+        await load();
+        setSubmitting(false);
+    };
+
+    const onToggleLike = async (p: StatusItem) => {
+        if (p.hasLiked) await unlikeStatus(p._id);
+        else await likeStatus(p._id);
+        await load();
+    };
+
+    const renderItem = ({ item }: { item: StatusItem }) => {
+        const avatarSource = require("../../assets/image/profile.jpg");
+        const likeCount = (typeof item.likeCount === "number")
+        ? item.likeCount
+        : (item.like?.length ?? 0);
+
+        return (
+        <View style={[styles.card, { backgroundColor: color.surface, borderColor: "#eaeaea" }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
+            <Image source={avatarSource} style={styles.avatar} />
+            <View>
+                <Text style={[styles.email, { color: color.primary }]}>
+                {displayName(item.createdBy)}
+                </Text>
+                <Text style={[styles.time, { color: color.textSecondary }]}>
+                {new Date(item.createdAt).toLocaleString()}
+                </Text>
+            </View>
+            </View>
+
+            <Text style={{ color: color.text, marginBottom: 8 }}>{item.content}</Text>
+
+            <View style={styles.toolbar}>
+            <TouchableOpacity onPress={() => onToggleLike(item)}>
+                <Text style={[styles.action, { color: color.text }]}>
+                {item.hasLiked ? "💙" : "👍"} {likeCount}
+                </Text>
+            </TouchableOpacity>
+            <Link href={`/feed/${item._id}`} style={[styles.action, { color: color.primary }]}>
+                💬 {item.comment?.length ?? 0}
+            </Link>
+            </View>
+        </View>
+        );
+    };
 
     return (
-        <View style={{ flex:1, padding:16, width:"100%", maxWidth:700, alignSelf:"center", gap:12 }}>
-        <Text style={{ fontSize:22, fontWeight:"700", color: color.text }}>สถานะล่าสุด</Text>
+        <View style={[styles.screen, { backgroundColor: color.background }]}>
 
-        <View style={{ gap:8 }}>
+        <View style={[styles.composer, { backgroundColor: color.surface }]}>
+        <View style={[styles.headerBox, { backgroundColor: color.surface }]}>
+            <Text style={[styles.headerTitle, { color: color.text, fontWeight: "700" }]}>📢 โพสต์สถานะ</Text>
+        </View>
             <TextInput
-            placeholder="เขียนสิ่งที่อยากบอก..."
+            placeholder="คุณกำลังคิดอะไรอยู่..."
             placeholderTextColor={color.textSecondary}
-            style={{ borderWidth:1, borderColor:"#ddd", padding:12, borderRadius:12, minHeight:44, color: color.text }}
-            value={text} onChangeText={setText} multiline
+            value={content}
+            onChangeText={setContent}
+            style={[styles.input, { color: color.text, borderColor: "#eaeaea" }]}
+            multiline
             />
-            <Button title="โพสต์" onPress={onCreate} />
+            <TouchableOpacity
+            disabled={submitting}
+            onPress={onSubmit}
+            style={[styles.postBtn, { backgroundColor: "#49d488", opacity: submitting ? 0.6 : 1 }]}
+            >
+            <Text style={{ color: "#fff", fontWeight: "700" }}>โพสต์</Text>
+            </TouchableOpacity>
         </View>
 
         <FlatList
             data={posts}
-            keyExtractor={(p) => p.id}
-            ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-            renderItem={({ item }) => (
-            <View style={{ borderWidth:1, borderColor:"#eee", borderRadius:12, padding:12, backgroundColor: color.surface, gap:8 }}>
-                <Text style={{ fontWeight:"700", color: color.text }}>{item.user}</Text>
-                <Text style={{ color: color.text }}>{item.content}</Text>
-                <View style={{ flexDirection:"row", gap:12, alignItems:"center" }}>
-                <Pressable onPress={() => onLike(item.id)}><Text style={{ color: color.text }}>👍 {item.likes.length}</Text></Pressable>
-                <Link href={`/feed/${item.id}`} style={{ color: color.primary }}>ดูคอมเมนต์ ({item.comments.length})</Link>
-                </View>
-            </View>
-            )}
+            keyExtractor={(i) => i._id}
+            renderItem={renderItem}
+            ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+            contentContainerStyle={{ paddingVertical: 8 }}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         />
         </View>
     );
 }
+
+const styles = StyleSheet.create({
+    screen: { flex: 1, padding: 14 },
+    headerBox: {
+        flexDirection: "row", alignItems: "center",
+        justifyContent: "space-between", padding: 12, borderRadius: 12, marginBottom: 8,
+    },
+    headerTitle: { fontSize: 18, fontWeight: "700" },
+    headerChip: { width: 28, height: 28, borderRadius: 14 },
+    composer: { padding: 12, borderRadius: 12, marginBottom: 8, gap: 8 },
+    input: { borderWidth: 1, borderRadius: 10, padding: 10, minHeight: 40 },
+    postBtn: { alignSelf: "flex-start", paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12 },
+    card: { borderWidth: 1, borderRadius: 12, padding: 12 },
+    avatar: { width: 36, height: 36, borderRadius: 18, marginRight: 8 },
+    email: { fontWeight: "700" },
+    time: { fontSize: 12 },
+    toolbar: { flexDirection: "row", gap: 16, marginTop: 4 },
+    action: { fontWeight: "600" },
+});

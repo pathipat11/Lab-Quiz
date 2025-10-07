@@ -91,7 +91,7 @@ const Signin = () => {
           </TouchableOpacity>
         )}
 
-        <Link href="/signup" style={styles.link}>
+        <Link href="https://cis.kku.ac.th/" style={styles.link}>
           <Text style={{ color: color.primary }}>
             Don't have an account? Sign Up
           </Text>

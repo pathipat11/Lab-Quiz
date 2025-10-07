@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { apiPost, apiGet } from "./api";
+import { apiPost, apiGet, apiPatch } from "./api";
 
 export const login = async (email: string, password: string) => {
   const res: any = await apiPost("/signin", { email, password });
@@ -19,5 +19,16 @@ export const logout = async () => {
 
 export const getProfile = async () => {
   const res: any = await apiGet("/profile");
+  return res?.data ?? res;
+};
+
+export const updateProfile = async (payload: {
+  firstname?: string;
+  lastname?: string;
+  studentId?: string;
+  schoolId?: string;
+  advisorId?: string;
+}) => {
+  const res: any = await apiPatch("/profile", payload);
   return res?.data ?? res;
 };
