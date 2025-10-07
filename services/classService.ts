@@ -10,6 +10,7 @@ export type ClassMember = {
     type: string;
     confirmed: boolean;
     education?: {
+        image: any;
         major?: string;
         enrollmentYear?: string;
         studentId?: string;
