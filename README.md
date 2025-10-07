@@ -1,4 +1,4 @@
-# Lab-Quiz-Hybrid-Mobile
+# Quiz-Hybrid-Mobile
 
 A modern hybrid mobile app built with **Expo + React Native + Expo Router** that showcases:
 
