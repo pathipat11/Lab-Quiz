@@ -94,23 +94,8 @@ export async function deleteStatus(id: string) {
     await apiDelete(`/status/${id}`);
 }
 
-// export async function deleteComment(commentId: string, statusId?: string) {
-//     // ลองหลายแบบ: DELETE /comment/{id}, DELETE /comment?id=, DELETE /comment (body), POST /comment/delete
-//     const tries = [
-//         () => apiDelete(`/comment/${commentId}`),
-//         () => apiDelete(`/comment?id=${encodeURIComponent(commentId)}`),
-//         () => apiDelete("/comment", { id: commentId, statusId }), // <- หลายระบบรองรับแบบนี้
-//         () => apiPost("/comment/delete", { id: commentId, statusId }), // fallback
-//     ];
-//     let lastErr: any;
-//     for (const t of tries) {
-//         try { await t(); return; } catch (e) { lastErr = e; }
-//     }
-//     throw lastErr;
-// }
-
-export async function deleteComment(_id: string, _statusId?: string) {
-    throw new Error("เซิร์ฟเวอร์ยังไม่รองรับการลบคอมเมนต์");
+export async function deleteComment(commentId: string, statusId: string) {
+    return apiDelete(`/comment/${commentId}`, { statusId });
 }
 
 

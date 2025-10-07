@@ -8,7 +8,7 @@ import {
     StatusItem, displayName, isMine, deleteStatus, didILike
 } from "../../services/statusService";
 import { useTheme } from "../../context/ThemeContext";
-import { Link } from "expo-router";
+import { Link, useFocusEffect } from "expo-router";
 import { getProfile } from "../../services/authService";
 
 export default function Feed() {
@@ -35,6 +35,12 @@ export default function Feed() {
 
     useEffect(() => { load(); }, [load]);
 
+    useFocusEffect(
+        useCallback(() => {
+            load();
+        }, [load])
+    );
+    
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
         await load();

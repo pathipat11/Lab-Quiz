@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useEffect, useState, useCallback } from "react";
 import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert } from "react-native";
 import { addComment, getStatusById, StatusItem, displayName, isMine, deleteComment, deleteStatus } from "../../services/statusService";
@@ -11,6 +11,7 @@ export default function PostDetail() {
     const [post, setPost] = useState<StatusItem | null>(null);
     const [text, setText] = useState("");
     const [myEmail, setMyEmail] = useState<string | null>(null);
+    const router = useRouter();
 
     useEffect(() => {
         (async () => {
@@ -57,14 +58,18 @@ export default function PostDetail() {
     const onDeletePost = async () => {
         Alert.alert("ลบโพสต์", "ต้องการลบโพสต์นี้หรือไม่?", [
             { text: "ยกเลิก", style: "cancel" },
-            { text: "ลบ", style: "destructive", onPress: async () => {
+            {
+            text: "ลบ",
+            style: "destructive",
+            onPress: async () => {
                 try {
                 await deleteStatus(id!);
-                // ถ้าใช้ router: router.back();
+                router.back(); // ✅ กลับและให้ feed โฟกัส → รีเฟรชตามข้อ 1
                 } catch (e: any) {
                 Alert.alert("ลบโพสต์ไม่สำเร็จ", e?.message ?? "เกิดข้อผิดพลาด (500)");
                 }
-            }}
+            },
+            },
         ]);
     };
 
